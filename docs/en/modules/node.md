@@ -90,7 +90,7 @@ Enters deep sleep mode, wakes up when timed out.
 The maximum sleep time is 4294967295us, ~71 minutes. This is an SDK limitation.
 Firmware from before 05 Jan 2016 have a maximum sleeptime of ~35 minutes.
 
-!!! note "Note:"
+!!! caution
 
     This function can only be used in the condition that esp8266 PIN32(RST) and PIN8(XPD_DCDC aka GPIO16) are connected together. Using sleep(0) will set no wake up timer, connect a GPIO to pin RST, the chip will wake up by a falling-edge on pin RST.
 
@@ -104,7 +104,7 @@ Firmware from before 05 Jan 2016 have a maximum sleeptime of ~35 minutes.
 	- 0, init data byte 108 is valuable
 	- \> 0, init data byte 108 is valueless
 	- 0, RF_CAL or not after deep-sleep wake up, depends on init data byte 108
-	- 1, RF_CAL after deep-sleep wake up, there will belarge current
+	- 1, RF_CAL after deep-sleep wake up, there will be large current
 	- 2, no RF_CAL after deep-sleep wake up, there will only be small current
 	- 4, disable RF after deep-sleep wake up, just like modem sleep, there will be the smallest current
 
@@ -135,6 +135,19 @@ none
 
 #### Returns
 flash ID (number)
+
+## node.flashsize()
+
+Returns the flash chip size in bytes. On 4MB modules like ESP-12 the return value is 4194304 = 4096KB.
+
+#### Syntax
+`node.flashsize()`
+
+#### Parameters
+none
+
+#### Returns
+flash size in bytes (integer)
 
 ## node.heap()
 
@@ -179,7 +192,7 @@ print("NodeMCU "..majorVer.."."..minorVer.."."..devVer)
 
 Submits a string to the Lua interpreter. Similar to `pcall(loadstring(str))`, but without the single-line limitation.
 
-!!! note "Note:"
+!!! attention
 
     This function only has an effect when invoked from a callback. Using it directly on the console **does not work**.
 
@@ -200,59 +213,11 @@ sk:on("receive", function(conn, payload) node.input(payload) end)
 #### See also
 [`node.output()`](#nodeoutput)
 
-## node.key() --deprecated
-
-Defines action to take on button press (on the old devkit 0.9), button connected to GPIO 16.
-
-This function is only available if the firmware was compiled with DEVKIT_VERSION_0_9 defined.
-
-#### Syntax
-`node.key(type, function())`
-
-#### Parameters
-  - `type`: type is either string "long" or "short". long: press the key for 3 seconds, short: press shortly(less than 3 seconds)
-  - `function`: user defined function which is called when key is pressed. If nil, remove the user defined function. Default function: long: change LED blinking rate,  short: reset chip
-
-#### Returns
-`nil`
-
-#### Example
-```lua
-node.key("long", function() print('hello world') end)
-```
-#### See also
-[`node.led()`](#nodeled-deprecated)
-
-## node.led() --deprecated
-
-Sets the on/off time for the LED (on the old devkit 0.9), with the LED connected to GPIO16, multiplexed with [`node.key()`](#nodekey-deprecated).
-
-This function is only available if the firmware was compiled with DEVKIT_VERSION_0_9 defined.
-
-#### Syntax
-`node.led(low, high)`
-
-#### Parameters
-  - `low` LED off time, LED keeps on when low=0. Unit: milliseconds, time resolution: 80~100ms
-  - `high` LED on time. Unit: milliseconds, time resolution: 80~100ms
-
-#### Returns
-`nil`
-
-#### Example
-```lua
--- turn led on forever.
-node.led(0)
-```
-
-#### See also
-[`node.key()`](#nodekey-deprecated)
-
 ## node.output()
 
 Redirects the Lua interpreter output to a callback function. Optionally also prints it to the serial console.
 
-!!! note "Note:"
+!!! caution
 
     Do **not** attempt to `print()` or otherwise induce the Lua interpreter to produce output from within the callback function. Doing so results in infinite recursion, and leads to a watchdog-triggered restart.
 

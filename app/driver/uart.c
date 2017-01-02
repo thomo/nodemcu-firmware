@@ -30,11 +30,15 @@
 
 // For event signalling
 static task_handle_t sig = 0;
+static uint8 *sig_flag;
+static uint8 isr_flag = 0;
 
 // UartDev is defined and initialized in rom code.
 extern UartDevice UartDev;
 
 static os_timer_t autobaud_timer;
+
+static void (*alt_uart0_tx)(char txchar);
 
 LOCAL void ICACHE_RAM_ATTR
 uart0_rx_intr_handler(void *para);
@@ -125,6 +129,11 @@ uart0_alt(uint8 on)
 STATUS ICACHE_FLASH_ATTR
 uart_tx_one_char(uint8 uart, uint8 TxChar)
 {
+    if (uart == 0 && alt_uart0_tx) {
+      (*alt_uart0_tx)(TxChar);
+      return OK;
+    }
+
     while (true)
     {
       uint32 fifo_cnt = READ_PERI_REG(UART_STATUS(uart)) & (UART_TXFIFO_CNT<<UART_TXFIFO_CNT_S);
@@ -270,8 +279,12 @@ uart0_rx_intr_handler(void *para)
         got_input = true;
     }
 
-    if (got_input && sig)
-      task_post_low (sig, false);
+    if (got_input && sig) {
+      if (isr_flag == *sig_flag) {
+        isr_flag ^= 0x01;
+        task_post_low (sig, 0x8000 | isr_flag << 14 | false);
+      }
+    }
 }
 
 static void 
@@ -309,21 +322,21 @@ uart_stop_autobaud()
  * Description  : user interface for init uart
  * Parameters   : UartBautRate uart0_br - uart0 bautrate
  *                UartBautRate uart1_br - uart1 bautrate
- *                uint8        task_prio - task priority to signal on input
  *                os_signal_t  sig_input - signal to post
+ *                uint8       *flag_input - flag of consumer task
  * Returns      : NONE
 *******************************************************************************/
 void ICACHE_FLASH_ATTR
-uart_init(UartBautRate uart0_br, UartBautRate uart1_br, os_signal_t sig_input)
+uart_init(UartBautRate uart0_br, UartBautRate uart1_br, os_signal_t sig_input, uint8 *flag_input)
 {
     sig = sig_input;
+    sig_flag = flag_input;
 
     // rom use 74880 baut_rate, here reinitialize
     UartDev.baut_rate = uart0_br;
     uart_config(UART0);
     UartDev.baut_rate = uart1_br;
     uart_config(UART1);
-    ETS_UART_INTR_ENABLE();
 #ifdef BIT_RATE_AUTOBAUD
     uart_init_autobaud(0);
 #endif
@@ -338,4 +351,8 @@ uart_setup(uint8 uart_no)
     ETS_UART_INTR_DISABLE();
     uart_config(uart_no);
     ETS_UART_INTR_ENABLE();
+}
+
+void ICACHE_FLASH_ATTR uart_set_alt_output_uart0(void (*fn)(char)) {
+  alt_uart0_tx = fn;
 }
